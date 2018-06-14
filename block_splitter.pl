@@ -9,32 +9,51 @@ use utf8;
 use Text::Diff;
 use File::Basename;
 use Encode;
-
-#mkdir 'OLDER', 0755 or die $!;
-#mkdir 'NEWER', 0755 or die $!;
+use Algorithm::Diff;
 
 $OLDER_PATH = $ARGV[0];
 $NEWER_PATH = $ARGV[1];
-$DIFF_switch= 0 if ( !$ARGV[2] );
 
-#各コンフィグファイルを読み込む
+$OLDER_NAME = basename $OLDER_PATH;
+$NEWER_NAME = basename $NEWER_PATH;
+
+# Create directories needed.
+mkdir "${OLDER_NAME}_DIR" if ( !-d "${OLDER_NAME}_DIR" );
+mkdir "${NEWER_NAME}_DIR" if ( !-d "${NEWER_NAME}_DIR" );
+mkdir "${OLDER_NAME}-${NEWER_NAME}_DIFF_DIR" if ( !-d "${OLDER_NAME}-${NEWER_NAME}_DIFF_DIR" );
+
+
+# Read the older conf and the newer one.
 open OLDER,"<$OLDER_PATH" or die ("The older configuration was not read correctly.");
 open NEWER,"<$NEWER_PATH" or die ("The newer configuration was not read correctly.");
 
+
+### Blocks Separator ####################################################################
+#											#							#
+#  This Section is a separator that clips top-level-blocks from the older and the newer #
+#  one #respectively to each files point by point.					#
+#  The files generated are stored at "${NEWER_NAME}_DIR" for the newer conf		#
+#  and "${OLDER_NAME}_DIR" for the older# one likewise.					#
+#											#
+#########################################################################################
+
+### Separate each top-level-blocks to files from  the older and the newer one, which is used to HANDLER.
 &OUTPUT(OLDER);
 &OUTPUT(NEWER);
+&DIFF;
 
+sub OUTPUT{	#Conf Separator
+	$HANDLER = $_[0];
+	if( 'OLDER' eq $HANDLER ){ $STORE_DIR = "${OLDER_NAME}_DIR"; }
+	if( 'NEWER' eq $HANDLER ){ $STORE_DIR = "${NEWER_NAME}_DIR"; }
 
-
-sub OUTPUT{
-	$HANDLER=$_[0];
 	$flg=0;
 	while(<$HANDLER>){
 		chomp $_;
 			if ( $_ =~/^config\s(.*)$/ ){
 				$flg=1;
 				$blockname=$1;
-				open OUTPUT,">./$HANDLER/$blockname";
+				open OUTPUT,">./$STORE_DIR/$blockname";
 			}
 		if ( $flg == 1 ){
 			print OUTPUT "$_\n";
@@ -46,21 +65,42 @@ sub OUTPUT{
 			$flg=0;
 		}
 	}
+
+
+
+
+
+
 }
 
 
 
-## diff ##
-$DIFF_switch = 1; #Only For Debugging.
-if( $DIFF_switch != 1 ){ exit; } #DIFF_switchが1でなければここで終了。
+### DIFF ################################################################################
+#											#
+#	This Section is a generator that do diff between the older and the newer one.	#
+#	The results are stored at a dir "${OLDER_NAME}-${NEWER_NAME}_DIFF_DIR".		#
+#											#
+#########################################################################################
 
-#mkdir './DIFF', 0755 or die $!;
+sub DIFF{	#DIFF files generator
+	my %hash=();
+	my @samename_blocks = ( glob("${OLDER_NAME}_DIR/*"), glob("${NEWER_NAME}_DIR/*") );
+	$hash{ basename($_) }++ for( @samename_blocks );
 
-# Get the lists of those files in both OLDER and NEWER to use glob().
-@glob_NEWER_list = glob("./NEWER/*");
-@glob_OLDER_list = glob("./OLDER/*");
+	while( my ($key, $val) = each %hash ){
+        	if( $val == 2){
+			my $older_diff = "./${OLDER_NAME}_DIR/$key";
+			my $newer_diff = "./${NEWER_NAME}_DIR/$key";
+			my $diff = diff $older_diff, $newer_diff, { STYLE => 'OldStyle' };
+			
+			open DIFF,">./${OLDER_NAME}-${NEWER_NAME}_DIFF_DIR/$key";
+			print DIFF "$diff";
+			close(DIFF);
+		}
+	}
+}
 
-open TMP,">./OLDERtoDIFF";
+open TMP,">./";
 foreach my $glob_OLDER_list (@glob_OLDER_list) {
 	my $filename_OLDER = basename($glob_OLDER_list);
 	print TMP "$filename_OLDER\n";
@@ -76,7 +116,5 @@ foreach my $glob_NEWER_list (@glob_NEWER_list) {
 close(TMP);
 undef @glob_NEWER_list;
 
-print encode('utf-8',"処理が完了しました。\n");
-#	my $block_diff = diff OLDERtoDIFF, NEWERtoDIFF,{STYLE => "OldStyle"};
 
 exit 0;
