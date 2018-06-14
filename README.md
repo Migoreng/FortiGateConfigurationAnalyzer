@@ -8,5 +8,5 @@ My scripts are developed under Linux enviroment, written in Perl or Bash. They a
 
 
 ## To compare blocks
-*block_splitter.pl
+*block_splitter.pl  
 This script requires the previous-configuration and the current one, breaks up config into each top-level-blocks, finally outputs the results of comparing them by using diff. You can obtain pieces of block files in 2 directories generated as well as "diff-done" files in another directory. The work allows you to not need to use tools/softwares such as WinMerge or DF or etc. anymore.
