@@ -100,21 +100,5 @@ sub DIFF{	#DIFF files generator
 	}
 }
 
-open TMP,">./";
-foreach my $glob_OLDER_list (@glob_OLDER_list) {
-	my $filename_OLDER = basename($glob_OLDER_list);
-	print TMP "$filename_OLDER\n";
-}
-close(TMP);
-undef @glob_OLDER_list;
-
-open TMP,">./NEWERtoDIFF";
-foreach my $glob_NEWER_list (@glob_NEWER_list) {
-	my $filename_NEWER= basename($glob_NEWER_list);
-	print TMP "$filename_NEWER\n";
-}
-close(TMP);
-undef @glob_NEWER_list;
-
 
 exit 0;
